@@ -1,0 +1,254 @@
+<?php
+require_once '../config/db.php';
+session_start(); // Start session
+
+if (!isset($_SESSION['user'])) {
+    // If no user session, redirect to login
+    header("Location: login.php");
+    exit();
+}
+
+$user = $_SESSION['user']; // Use user session data
+
+// Check if 'appointment_number' is set in the URL parameters
+if (isset($_GET['appointment_number'])) {
+    $appointmentNumber = $_GET['appointment_number'];
+
+    // Fetch additional information from appointment table
+    $appointmentInfoQuery = $conn->prepare("SELECT * FROM appointment WHERE appointment_number = :appointment_number");
+    $appointmentInfoQuery->bindParam(':appointment_number', $appointmentNumber);
+    $appointmentInfoQuery->execute();
+    $appointmentInfo = $appointmentInfoQuery->fetch(PDO::FETCH_ASSOC);
+
+    // Check if appointmentInfo is not empty
+    if ($appointmentInfo) {
+        // Now you can use $appointmentInfo['appointment_number'] in your code
+        // For example, you can display it or use it in further processing
+        $appointmentNumber = $appointmentInfo['appointment_number'];
+    } else {
+        // Handle the case where no appointmentInfo is found
+        // You might want to show an error message or take some other action
+        echo "ไม่พบข้อมูลการนัดหมาย";
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if the form is submitted
+    if (isset($_POST['checkup_status'])) {
+        $checkupStatus = $_POST['checkup_status'];
+
+        // Prepare and execute the SQL statement to insert into user_checkup
+        $insertStatement = $conn->prepare("INSERT INTO user_checkup (user_id, name, id_topic, checkup_subject, checkup_level, check_up_times) 
+                                           VALUES (:user_id, :name, :id_topic, :checkup_subject, :checkup_level, :check_up_times)");
+
+        foreach ($checkupStatus as $checkupId) {
+            // Fetch user information from general_info table
+            $userInfoQuery = $conn->prepare("SELECT * FROM general_info WHERE user_id = :user_id ORDER BY date DESC LIMIT 1");
+            $userInfoQuery->bindParam(':user_id', $user['id']);
+            $userInfoQuery->execute();
+            $userInfo = $userInfoQuery->fetch(PDO::FETCH_ASSOC);
+
+            // Check if user_info is not empty
+            if ($userInfo) {
+                // Now you can use $userInfo['checkup_level'] in your code
+                $checkupLevel = $userInfo['checkup_level'];
+            } else {
+                // Handle the case where no user_info is found
+                // You might want to set a default value or take some other action
+                $checkupLevel = "default_value";
+            }
+
+            // You can set check_up_times to the desired value here
+            $checkUpTimes = $appointmentNumber;
+
+            // Perform the insertion into user_checkup
+            $insertStatement->bindParam(':user_id', $user['id']);
+            $insertStatement->bindParam(':name', $user['name']);
+            $insertStatement->bindParam(':id_topic', $checkupId);
+
+            // Fetch checkup information from health_checkup table
+            $checkupInfoQuery = $conn->prepare("SELECT * FROM health_checkup WHERE id_topic = :checkupId");
+            $checkupInfoQuery->bindParam(':checkupId', $checkupId);
+            $checkupInfoQuery->execute();
+            $checkupInfo = $checkupInfoQuery->fetch(PDO::FETCH_ASSOC);
+
+            if ($checkupInfo) {
+                // Now you can use $checkupInfo['checkup_subject'] and $checkupInfo['checkup_level'] in your code
+                $insertStatement->bindParam(':checkup_subject', $checkupInfo['checkup_subject']);
+                $insertStatement->bindParam(':checkup_level', $checkupLevel);
+                $insertStatement->bindParam(':check_up_times', $checkUpTimes);
+
+                $insertStatement->execute();
+            }
+        }
+
+      
+    }
+}
+
+// ... (existing PHP code) ...
+?>
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>คณะพยาบาลศาสตร์ ม.ขอนแก่น</title>
+
+    <!-- Custom fonts for this template-->
+    <link rel="shortcut icon" href="./image/logo.png" type="image/x-icon">
+    <script src="https://kit.fontawesome.com/yourcode.js" crossorigin="anonymous"></script>
+    <link href="../vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
+
+    <!-- Custom styles for this template-->
+    <link href="../css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff; /* Set the background color for the entire body */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #ffffff; /* Set the background color for the table */
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+
+    
+
+
+<style>
+    /* Add this CSS rule for the button style */
+    .btn-purple {
+        background-color: purple;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    /* Add a hover effect */
+    .btn-purple:hover {
+        background-color: darkpurple;
+    }
+</style>
+
+
+<script>
+        // Check if the URL has the success parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const success = urlParams.get('success');
+
+        // If success parameter is present, show the success modal
+        if (success === 'true') {
+            $(document).ready(function () {
+                $('#successModal').modal('show');
+            });
+        }
+    </script>
+
+    
+</head>
+
+<body id="page-top">
+    <div id="wrapper">
+        <!-- Include Header -->
+        <?php include "header/header.php"; ?>
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <!-- Main Content -->
+            <div id="content">
+                <!-- Topbar -->
+                <!-- ... (your existing topbar content) ... -->
+                <!-- End of Topbar -->
+                <!-- Begin Page Content -->
+                <div class="container-fluid">
+                    <!-- Display Data Table -->
+                    <h1 class="h3 mb-4 text-gray-800">ข้อมูลทั่วไป</h1>
+                    <form action="" method="post"> <!-- Removed action attribute, as the form is on the same page -->
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">ลำดับ</th>
+                                    <th scope="col">เรื่องที่ตรวจ</th>
+                                    <th scope="col">รายละเอียด</th>
+                                    <th scope="col">การตรวจ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                // Fetch data from database and display in the table
+                                $query = "SELECT * FROM set_test WHERE sect = :appointment_number";
+                                $result = $conn->prepare($query);
+                                $result->bindParam(':appointment_number', $appointmentNumber);
+                                $result->execute();
+
+                                if ($result->rowCount() > 0) {
+                                    $counter = 1;
+                                    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                                        echo "<tr>";
+                                        echo "<td>{$counter}</td>";
+                                        echo "<td>{$row['checkup_subject']}</td>";
+                                        echo "<td>{$row['checkup_details']}</td>";
+                                        echo "<td><input type='checkbox' name='checkup_status[]' value='{$row['id_topic']}'></td>";
+                                        echo "</tr>";
+                                        $counter++;
+                                    }
+
+                                    echo "<tr><td colspan='4'><button class='btn btn-primary btn-sm' type='submit'>บันทึกการตรวจ</button></td></tr>";
+
+                                } else {
+                                    echo "<tr><td colspan='4'>No data available</td></tr>";
+                                }
+                                ?>
+                            </tbody>
+                        </table>
+                    </form>
+                    <!-- End Data Table -->
+                </div>
+                <!-- End of Main Content -->
+            </div>
+            <!-- End of Content Wrapper -->
+        </div>
+        <!-- End of Page Wrapper -->
+
+        <!-- Bootstrap core JavaScript-->
+        <script src="../vendor/jquery/jquery.min.js"></script>
+        <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <!-- Core plugin JavaScript-->
+        <script src="../vendor/jquery-easing/jquery.easing.min.js"></script>
+        <!-- Custom scripts for all pages-->
+        <script src="../js/sb-admin-2.min.js"></script>
+    </body>
+
+</html>
